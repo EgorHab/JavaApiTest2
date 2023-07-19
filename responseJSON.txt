@@ -1,0 +1,1 @@
+{"id":1604321,"name":"baking powder","measures":{"original":{"amount":1.0,"unit":"package"},"metric":{"amount":1.0,"unit":"pkg"},"us":{"amount":1.0,"unit":"pkg"}},"usages":[],"usageRecipeIds":[],"pantryItem":false,"aisle":"Baking","cost":0.71,"ingredientId":18369}
