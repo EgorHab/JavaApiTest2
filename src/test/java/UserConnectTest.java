@@ -1,13 +1,22 @@
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.restassured.RestAssured;
+import io.restassured.builder.RequestSpecBuilder;
+import io.restassured.builder.ResponseSpecBuilder;
+import io.restassured.filter.log.LogDetail;
+import io.restassured.http.ContentType;
+
 import io.restassured.path.json.JsonPath;
 import io.restassured.response.Response;
-import org.junit.After;
+import io.restassured.specification.RequestSpecification;
+import io.restassured.specification.ResponseSpecification;
+import org.hamcrest.Matchers;
 import org.junit.FixMethodOrder;
-import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.runners.MethodSorters;
 
-import java.io.File;
 import java.io.IOException;
+import java.io.StringReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -22,13 +31,42 @@ public class UserConnectTest {
     static String username;
     static String hash;
     static String shoppingListItemId;
-
     static String apiKey = "f3e41429b9574b5ba90adbdd9c6a38f4";
+
+    ResponseSpecification responseSpecification;
+    RequestSpecification requestSpecification;
+    RequestBodyJson requestBodyJson = new RequestBodyJson();
+    ResponseBodyJson responseBodyJson;
+
+    ObjectMapper mapper = new ObjectMapper();
+
+
+
+    @BeforeEach
+    void beforeTestResponseSpecification() {
+
+        responseSpecification = new ResponseSpecBuilder()
+                .expectStatusCode(200)
+                .expectContentType(ContentType.JSON)
+                .expectResponseTime(Matchers.lessThan(3000L))
+                .build();
+        RestAssured.responseSpecification = responseSpecification;
+    }
+
+    @BeforeEach
+    void beforeTestRequestSpecification() {
+        requestSpecification = new RequestSpecBuilder()
+                .addQueryParam("apiKey", apiKey)
+                .log(LogDetail.HEADERS)
+                .build();
+        RestAssured.requestSpecification = requestSpecification;
+
+    }
+
 
     @Test
     void testA() {
         Response response = given()
-                .queryParam("apiKey", apiKey)
                 .body("{\n" +
                         "    \"username\": \"frl27\",\n" +
                         "    \"firstName\": \"Egor\",\n" +
@@ -36,8 +74,7 @@ public class UserConnectTest {
                         "    \"email\": \"belogradoff@mail.ru\"\n" +
                         "}")
                 .when()
-                .post("https://api.spoonacular.com/users/connect")
-                .prettyPeek();
+                .post("https://api.spoonacular.com/users/connect");
 
 
         JsonPath jsonPath = response.jsonPath();
@@ -56,15 +93,11 @@ public class UserConnectTest {
     void testB() {
         given()
                 .pathParam("username", username)
-                .pathParam("start-date", "2023-07-19")
-                .pathParam("end-date", "2023-07-23")
+                .pathParam("start-date", "2023-07-24")
+                .pathParam("end-date", "2023-07-29")
                 .queryParam("hash", hash)
-                .queryParam("apiKey", apiKey)
                 .when()
-                .post("https://api.spoonacular.com/mealplanner/{username}/shopping-list/{start-date}/{end-date}/")
-                .prettyPeek()
-                .then()
-                .statusCode(200);
+                .post("https://api.spoonacular.com/mealplanner/{username}/shopping-list/{start-date}/{end-date}/");
 
     }
 
@@ -74,22 +107,30 @@ public class UserConnectTest {
         Response response = given()
                 .pathParam("username", username)
                 .queryParam("hash", hash)
-                .queryParam("apiKey", apiKey)
-                .body("{\n" +
-                        "\t\"item\": \"1 package baking powder\",\n" +
-                        "\t\"aisle\": \"Baking\",\n" +
-                        "\t\"parse\": true\n" +
-                        "}")
+                .body(requestBodyJson)
+//                ("{\n" +
+//                        "\t\"item\": \"1 package baking powder\",\n" +
+//                        "\t\"aisle\": \"Baking\",\n" +
+//                        "\t\"parse\": true\n" +
+//                        "}")
                 .when()
                 .post("https://api.spoonacular.com/mealplanner/{username}/shopping-list/items")
                 .prettyPeek();
+
+
+        String json = response.getBody().asString();
+        StringReader reader = new StringReader(json);
+
+        responseBodyJson = mapper.readValue(reader, ResponseBodyJson.class);
+
+
         JsonPath jsonPath = response.jsonPath();
         shoppingListItemId = jsonPath.getString("id");
 
         assertThat(jsonPath.get("id"), notNullValue());
 
         String responseJSON = "responseJSON.txt";
-        String filePath ="./" + responseJSON;
+        String filePath = "./" + responseJSON;
 
 
         try (var inputStream = response.getBody().asInputStream()) {
@@ -100,22 +141,21 @@ public class UserConnectTest {
             e.printStackTrace();
         }
 
-//        System.out.println("Это id: " + shoppingListItemId);
+        System.out.println("Это id: " + shoppingListItemId);
+        System.out.println("Это значение id из объекта после десериализации: " + responseBodyJson.getId()  + " и значение pantryItem: "+ responseBodyJson.getPantryItem());
     }
 
 
     @Test
     void testD() {
         given()
-                .queryParam("apiKey", apiKey)
                 .queryParam("hash", hash)
                 .pathParam("id", shoppingListItemId)
                 .pathParam("username", username)
                 .when()
-                .delete("https://api.spoonacular.com/mealplanner/{username}/shopping-list/items/{id}")
-                .prettyPeek()
-                .then()
-                .statusCode(200);
+                .delete("https://api.spoonacular.com/mealplanner/{username}/shopping-list/items/{id}");
+
+
 
     }
 }

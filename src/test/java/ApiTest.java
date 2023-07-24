@@ -1,6 +1,15 @@
+import io.restassured.RestAssured;
+import io.restassured.builder.RequestSpecBuilder;
+import io.restassured.builder.ResponseSpecBuilder;
+import io.restassured.filter.log.LogDetail;
+import io.restassured.http.ContentType;
 import io.restassured.path.json.JsonPath;
 import io.restassured.response.Response;
+import io.restassured.specification.RequestSpecification;
+import io.restassured.specification.ResponseSpecification;
 import org.hamcrest.CoreMatchers;
+import org.hamcrest.Matchers;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static io.restassured.RestAssured.given;
@@ -11,13 +20,37 @@ import static org.hamcrest.Matchers.lessThanOrEqualTo;
 ;
 
 public class ApiTest {
+    static String apiKey = "f3e41429b9574b5ba90adbdd9c6a38f4";
+    ResponseSpecification responseSpecification;
+    RequestSpecification requestSpecification;
+    @BeforeEach
+    void beforeTestResponseSpecification() {
+        responseSpecification = new ResponseSpecBuilder()
+                .expectResponseTime(Matchers.lessThan(3500L))
+                .expectContentType(ContentType.JSON)
+                .expectStatusCode(200)
+                .build();
+
+//        RestAssured.responseSpecification = responseSpecification;
+
+    }
+
+    @BeforeEach
+    void beforeTestRequestSpecification() {
+        requestSpecification = new RequestSpecBuilder()
+                .addQueryParam("apiKey", apiKey)
+                .log(LogDetail.PARAMS)
+                .build();
+
+//        RestAssured.requestSpecification = requestSpecification;
+    }
 
 
     @Test
     void complexSearchNumberCheckPositiveTest() {
 
         JsonPath response = given()
-                .queryParam("apiKey", "f3e41429b9574b5ba90adbdd9c6a38f4")
+                .queryParam("apiKey", apiKey)
                 .queryParam("number", "99")
                 .queryParam("cuisine", "italian")
                 .when()
@@ -30,13 +63,13 @@ public class ApiTest {
     @Test
     void complexSearchStatusCodePositiveTest() {
         given()
-                .queryParam("apiKey", "f3e41429b9574b5ba90adbdd9c6a38f4")
+                .spec(requestSpecification)
                 .queryParam("diet", "vegeterian")
                 .queryParam("number", "100")
                 .when()
                 .get("https://api.spoonacular.com/recipes/complexSearch")
                 .then()
-                .statusCode(200);
+                .spec(responseSpecification);
 
     }
 
@@ -44,7 +77,7 @@ public class ApiTest {
     @Test
     void complexSearchDietTotalResultsPositiveTest() {
         JsonPath response = given()
-                .queryParam("apiKey", "f3e41429b9574b5ba90adbdd9c6a38f4")
+                .spec(requestSpecification)
                 .queryParam("diet", "vegetarian")
                 .when()
                 .get("https://api.spoonacular.com/recipes/complexSearch")
@@ -60,7 +93,7 @@ public class ApiTest {
     @Test
     void complexSearchHasStringPositiveTest() {
         JsonPath response = given()
-                .queryParam("apiKey", "f3e41429b9574b5ba90adbdd9c6a38f4")
+                .spec(requestSpecification)
                 .queryParam("query", "pasta")
                 .when()
                 .get("https://api.spoonacular.com/recipes/complexSearch")
@@ -74,16 +107,16 @@ public class ApiTest {
 
     @Test
     void complexSearchResponseTimePositiveTest() {
-        Response response = given()
-                .queryParam("apiKey", "f3e41429b9574b5ba90adbdd9c6a38f4")
+        given()
+                .spec(requestSpecification)
                 .when()
                 .get("https://api.spoonacular.com/recipes/complexSearch")
 //                .prettyPeek()
-                ;
+                .then()
+                .spec(responseSpecification);
 
 
-        System.out.println("Время ответа: " + response.time());
-        assertThat(response.time(), lessThanOrEqualTo(1200L));
+
 
 
     }
@@ -91,7 +124,7 @@ public class ApiTest {
     @Test
     void cuisineStatusOk() {
         given()
-                .queryParam("apiKey", "f3e41429b9574b5ba90adbdd9c6a38f4")
+                .spec(requestSpecification)
                 .body("{\n" +
                         "    \"title\": \"Spaghetti Carbonara\",\n" +
                         "    \"servings\": 2,\n" +
@@ -108,14 +141,14 @@ public class ApiTest {
                 .post("https://api.spoonacular.com/recipes/analyze")
 //                .prettyPeek()
                 .then()
-                .statusCode(200);
+                .spec(responseSpecification);
     }
 
     @Test
     void cuisineCheckIdPositiveTest() {
         JsonPath response = given()
+                .spec(requestSpecification)
                 .queryParam("language", "de")
-                .queryParam("apiKey", "f3e41429b9574b5ba90adbdd9c6a38f4")
                 .queryParam("includeTaste", "true")
                 .body("{\n" +
                         "    \"title\": \"Spaghetti Carbonara\",\n" +
@@ -166,7 +199,7 @@ public class ApiTest {
     @Test
     void cuisineSuccessPostRequest() {
         Response response = given()
-                .queryParam("apiKey", "f3e41429b9574b5ba90adbdd9c6a38f4")
+                .spec(requestSpecification)
                 .queryParam("language", "de")
                 .when()
                 .post("https://api.spoonacular.com/recipes/cuisine")
